@@ -883,6 +883,78 @@ classdef posturography
             
             
         end
+        function COPavg = averageMetrics(COP,groups, groupLabels)
+            % compute average metrics based on groupings specified
+            % INPUT: 
+            %      COP: structure, where metrics have already been calculated 
+            %      groups: Optional. cell array specifying which trials belong to which group
+            %              cell array [groupNum x 1], each element containing vector of trial numbers. 
+            %      groupLabels: optional. cell array [groupNum x 1] names of the groups
+            % 
+            % for example: Conducted 6 posturography trials, 3 eyes closed,
+            % 3 eyes open. we could specify these 2 groups of trials as:
+            %       groups = {[1 2 3]; [4 5 6]}; 
+            %       groupLabels = {'eyes closed','eyes open'};
+            % 
+            
+            % default values
+            if nargin == 1
+                groups = {[1:length(COP)]};
+                groupLabels = {'All trials'};
+            end
+            if nargin == 2
+                for i = 1:length(groups)
+                    groupLabels{i} = char(i+'A'-1); % if no labels, use letters
+                end
+            end
+            
+            assert(length(groups)==length(groupLabels)); 
+            
+            for g = 1:length(groups)
+                for i = 1:length(groups{g}) % pull trials in that group
+                    metrics_trial(i) = COP(groups{g}(i)).metrics;
+                end
+                if length(groups{g})==1 % dont need to average if group of 1 member
+                    COPavg(g).filename = groupLabels{g};
+                    COPavg(g).nTrials = 1;
+                    COPavg(g).metrics = metrics_trial;
+                    continue;
+                end
+                % set up new structure:
+                fnames = fieldnames(metrics_trial);
+                c = cell(length(fnames),1);
+                metrics=cell2struct(c,fnames);
+                % fill struct with average values
+                for i = 1:length(fnames)
+                    if ~startsWith(fnames{i},'FFT') 
+                        % use normal average scheme
+                        metrics.(fnames{i}) = mean([metrics_trial.(fnames{i})]);
+                    end
+                end
+                % use different averaging scheme for the FFT metrics
+                for j = 1:length(groups{g}) % ensure FFTfrequencies vectors are the same
+                    try
+                    FFTfrequencies(:,j) = metrics_trial(j).FFTfrequencies;
+                    catch
+                        error(['FFTfrequencies in group: ' num2str(g) ' are different. May have to interpolate when averaging, but this is not implemented yet. Or the lengths of the FFT vectors are different, need to update code to accomodate these situations.'])
+                    end
+                end
+                for j = 1:length(groups{g}) % pull FFTml and FFTap values
+                    FFTml(:,j) = metrics_trial(j).FFTml;
+                    FFTap(:,j) = metrics_trial(j).FFTap;
+                end
+                % set average FFT output
+                metrics.FFTfrequencies = FFTfrequencies(:,1);
+                metrics.FFTml = mean(FFTml,2);
+                metrics.FFTap = mean(FFTap,2);
+                
+                
+                % save to output
+                COPavg(g).filename = groupLabels{g};
+                COPavg(g).nTrials = length(groups{g});
+                COPavg(g).metrics = metrics;
+            end
+        end
         function fig = plotMetrics(COP,order,errorType)
             % plots the posturography metrics.
              % INPUT: 
@@ -961,10 +1033,27 @@ classdef posturography
         end
         function fig = plotSpectralAnalysis(COP,order,xlimits)
             % plot spectral analysis (FFT) values.
+            % INPUT: 
+            %      COP: structure, where metrics have already been calculated 
+            %      order: Optional, depending on plot type (see below)
+            %      xlimits: optional. replaces default x limits for plots
+            % 
+            % plot types:
+            % 1: single COP, 1 figure with ML and AP side by side
+            % 2: multiple COPs, 2 figures (ML,AP) with order of plots specified
+            %       order: Optional. array specifying how to group metrics
+            %           for example: if order = [1 2 3; 4 5 6]; then plots as
+            %           6 subplots, with 2 rows, 3 columns
+            % 3: multiple COPs, 2 figures (ML,AP) with order specified and
+            % overlaid plots specified
+            %       order: required to do overlaid plots. cell array
+            %       specifying which plots will be overlaid.
+            %           for example: if order = {[1 2],[3 4];[5 6],[7 8]},
+            %           then plots as 4 subplots, each with 2 overlaid plots
             
             % default values
             if nargin < 3
-                xlimits = [0 5]; % default range of 0-10Hz
+                xlimits = [0 5]; % default range of 0-5Hz
             end
             if nargin < 2
                 order = 1:length(COP);
@@ -975,12 +1064,6 @@ classdef posturography
                 if ~all(isfield(COP(i).metrics,{'FFTfrequencies','FFTml','FFTap'}))
                     error('Must calculate all the FFT values first. Use function: posturography.calcMetrics')
                 end
-            end
-            
-            % setup figures
-            fig(1) = figure();
-            if length(COP)>1
-                fig(2) = figure();
             end
             
             % find max y values
@@ -996,79 +1079,53 @@ classdef posturography
             ylimMax = max([ylimMaxML ylimMaxAP]);
             
             % set plotting options
-            plot_size = size(order);
-            order2 = reshape(order,1,numel(order));
-            lineWidth = 2;
-            fontSize = 12;
-            unitConversion=1000;
-            units = 'mm';
+            opt.xlimits = xlimits;
+            opt.ylimMax = ylimMax;
+            opt.lineWidth = 2;
+            opt.fontSize = 12;
+            opt.unitConversion=1000;
+            opt.units = 'mm';
             
-            for i = order2
-                %% PLOT MEDIOLATERAL SPECTRAL ANALYSIS
-                figure(fig(1));
-                if length(COP)>1
+            % setup figures
+            fig(1) = figure(); % ML
+            fig(1).PaperUnits = 'inches';
+            fig(1).PaperPosition = [0 0 8.5 11];
+            fig(1).Name = ['spectralAnalysis_ML'];
+            fig(2) = figure(); % AP
+            fig(2).PaperUnits = 'inches';
+            fig(2).PaperPosition = [0 0 8.5 11];
+            fig(2).Name = ['spectralAnalysis_AP'];
+            
+            % determine which type of plot to make
+            if length(COP) == 1 % plot single COP
+                delete(fig(2)); % only need one figure
+                fig(1).Name = ['spectralAnalysis'];
+                axML = subplot(1,2,1);
+                posturography.plotSpectralAnalysis_plotter('ML',COP,opt); % outsource to plotter
+                axAP = subplot(1,2,2);
+                posturography.plotSpectralAnalysis_plotter('AP',COP,opt); % outsource to plotter
+            else % plot multiple COPs (even overlaid)
+                % configure subplot arrangements
+                plot_size = size(order);
+                nPlots = 1:numel(order);
+                order2 = order'; % need to transpose for some reason
+                
+                if ~iscell(order2) % use consistent order type (overlaid vs regular)
+                    order2 = num2cell(order2);
+                end
+                
+                % plot each subplot
+                for i = nPlots
+                    figure(fig(1)); % ML
                     axML(i) = subplot(plot_size(1),plot_size(2),i);
-                else
-                    axML(i) = subplot(1,2,1);
-                end
-                
-                % plot
-                plot(COP(i).metrics.FFTfrequencies,unitConversion*COP(i).metrics.FFTml,'LineWidth',lineWidth);
-                
-                % axes
-                xlim(xlimits);
-                ylim([0,unitConversion*ylimMax]);
-                
-                % labels
-                xlabel('Frequency (Hz)','FontSize',fontSize)
-                ylabel(['COP_M_L Displacement (' units ')'],'FontSize',fontSize)
-                
-                % title
-                if isfield(COP,'filename')
-                    title(['FFT, ML: ' COP(i).filename],'Interpreter','none','FontSize',fontSize);
-                else
-                    title('Spectral Analysis: ML Direction','FontSize',fontSize);
-                end
-                
-                %% PLOT ANTEROPOSTERIOR SPECTRAL ANALYSIS 
-                if length(COP)>1
-                    figure(fig(2));
+                    posturography.plotSpectralAnalysis_plotter('ML',COP(order2{i}),opt); % outsource to plotter
+                    
+                    figure(fig(2)); % AP
                     axAP(i) = subplot(plot_size(1),plot_size(2),i);
-                else
-                    figure(fig(1));
-                    axAP(i) = subplot(1,2,2);
-                end
-                
-                % plot
-                plot(COP(i).metrics.FFTfrequencies,unitConversion*COP(i).metrics.FFTap,'LineWidth',lineWidth);
-                
-                % axes
-                xlim(xlimits);
-                ylim([0,unitConversion*ylimMax]);
-                
-                % labels
-                xlabel('Frequency (Hz)','FontSize',fontSize)
-                ylabel(['COP_A_P Displacement (' units ')'],'FontSize',fontSize)
-                
-                % title
-                if isfield(COP,'filename')
-                    title(['FFT, AP: ' COP(i).filename],'Interpreter','none','FontSize',fontSize);
-                else
-                    title('Spectral Analysis: AP Direction','FontSize',fontSize);
+                    posturography.plotSpectralAnalysis_plotter('AP',COP(order2{i}),opt); % outsource to plotter
                 end
             end
             linkaxes([axML axAP],'xy'); % link axes so they zoom together
-            
-            % save figure info
-            fig(1).PaperUnits = 'inches';
-            fig(1).PaperPosition = [0 0 8.5 11];
-            fig(1).Name = ['spectralAnalysis'];
-            if length(COP)>1
-                fig(1).Name = ['spectralAnalysis_ML'];
-                fig(2).PaperUnits = 'inches';
-                fig(2).PaperPosition = [0 0 8.5 11];
-                fig(2).Name = ['spectralAnalysis_AP'];
-            end
         end
         function saveFigure(fig,saveType,appendString)
             % inputs:
@@ -1109,6 +1166,61 @@ classdef posturography
     end
     methods (Static, Access = private)
         % insert methods that can only be accessed by this class.
+        function plotSpectralAnalysis_plotter(direction,COP,opt)
+            % plotSpectralAnalysis outsources to this function to do the actual plotting
+            
+            % plotting options, must be specified.
+            if nargin < 3
+                % defaults
+                opt.xlimits = [0 5];
+                opt.ylimMax = 5;
+                opt.lineWidth = 2;
+                opt.fontSize = 12;
+                opt.unitConversion =1000;
+                opt.units = 'mm';
+            end
+            
+            % plotting COP data in which direction?
+            switch direction
+                case {'ML','ml',1}
+                    FFTmetric = 'FFTml';
+                    FFTlabel = 'ML';
+                    FFTsublabel = '_M_L';
+                case {'AP','ap',2}
+                    FFTmetric = 'FFTap';
+                    FFTlabel = 'AP';
+                    FFTsublabel = '_A_P';
+            end
+            
+            % plot
+            hold on
+            for i = 1:length(COP)
+                plot(COP(i).metrics.FFTfrequencies,opt.unitConversion*COP(i).metrics.(FFTmetric),'LineWidth',opt.lineWidth);
+                if isfield(COP,'filename')
+                    filenames{i} = COP(i).filename; % store filename
+                else
+                    filename{i} = char(i+'A'-1); % if no filename, use letters
+                end
+            end
+            hold off
+            
+            % axes
+            xlim(opt.xlimits);
+            ylim([0,opt.unitConversion*opt.ylimMax]);
+            
+            
+            % labels
+            xlabel('Frequency (Hz)','FontSize',opt.fontSize)
+            ylabel(['COP' FFTsublabel ' Displacement (' opt.units ')'],'FontSize',opt.fontSize)
+            
+            
+            if length(COP) > 1 % if overlaid plots...
+                legend(filenames,'Interpreter','none'); % add legend
+                title(['Spectral Analysis: ' FFTlabel ' Direction'],'Interpreter','none','FontSize',opt.fontSize); % simplify title
+            else
+                title(['FFT, ' FFTlabel ': ' COP.filename],'Interpreter','none','FontSize',opt.fontSize); % filename as title
+            end
+        end
     end
 end
 
