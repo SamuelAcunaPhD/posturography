@@ -37,7 +37,12 @@ posturography.plotMetrics(COP,[1 2 3; 4 5 6]);
 
 %% plot FFTs
 % posturography.plotSpectralAnalysis(COP(1)) % single FFT plot
-posturography.plotSpectralAnalysis(COP,[1 2 3; 4 5 6]) % all FFTs
+posturography.plotSpectralAnalysis(COP,[1 2 3; 4 5 6]) % plot all FFTs
+
+%% compare FFT plots
+posturography.plotSpectralAnalysis(COP,{[1 2 3],[4 5 6]},[0 3]);% overlay FFT plots by condition, from 0-3 hz
+posturography.plotSpectralAnalysis(COP,{[1 2 3 4 5 6]});% overlay all FFT plots
+
 
 
 
