@@ -1144,6 +1144,9 @@ classdef posturography
                 mkdir('plots');
             end
             
+            % focus on figure
+            figure(fig);
+            
             % set save type
             switch saveType
                 case 1 % save a png
