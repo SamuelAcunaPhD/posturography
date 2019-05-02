@@ -6,6 +6,9 @@
 % starting point for all your posturography needs. Note this is a static
 % class, so you dont need a constructor to access it.
 %
+% note: 06 Mar 2019
+% I have changed 'detrend' in COP functions to just remove the DC mean, not a linear trend. Not sure if this should be changed back
+%
 % run this code using a driver file. For example:
 %     filenames = {'eyesOpen_1.csv';'eyesOpen_2.csv';'eyesOpen_3.csv';'eyesClosed_1.csv';'eyesClosed_2.csv';'eyesClosed_3.csv'};
 %     COP = posturography.load(filenames); % loads data files, filters, detrends
@@ -44,14 +47,16 @@ classdef posturography
                 Fz   = M(:,3); % force in Z direction
                 %Mx   = M(:,4); % moment about x axis
                 %My   = M(:,5); % moment about y axis
-                COPx = detrend(M(:,6)); % center of pressure x direction (ML direction usually)
-                COPy = detrend(M(:,7)); % center of pressure y direction (AP direction usually)
+                %COPx = detrend(M(:,6)); % center of pressure x direction (ML direction usually)
+                %COPy = detrend(M(:,7)); % center of pressure y direction (AP direction usually)
+                COPx = detrend(M(:,6),'constant'); % center of pressure x direction (ML direction usually)
+                COPy = detrend(M(:,7),'constant'); % center of pressure y direction (AP direction usually)
                 
                 sampRate = 1/(time(2)-time(1)); % find sample rate
                 mass = mean(Fz)/9.81; % newtons to kg
                 
                 %% filter data
-                % filter everything above 10 Hz, recommended by Baig 2012
+                % filter everything above 10 Hz, recommended by 1. Ruhe A, Fejer R, Walker B. The test-retest reliability of centre of pressure measures in bipedal static task conditions - A systematic review of the literature. Gait Posture 32: 436–445, 2010.
                 cutoffFrequency = 10;
                 [b,a]=butter(4,cutoffFrequency/(sampRate/2)); %butterworth filter, 4th order
                 COPx = filtfilt(b,a,COPx);
@@ -61,8 +66,10 @@ classdef posturography
                 % optional, might not want to do when comparing different conditions on
                 % same statokinesiogram
                 
-                COPx = detrend(COPx);
-                COPy = detrend(COPy);
+                %COPx = detrend(COPx);
+                %COPy = detrend(COPy);
+                COPx = detrend(COPx,'constant');
+                COPy = detrend(COPy,'constant');
                 
                 %% retain extracted data
                 COP(i).filename = filenames{i};
@@ -109,19 +116,23 @@ classdef posturography
             
             sampRate = data.fs; % sample rate
             
-            % filter everything above 10 Hz, recommended by Baig 2012
+            % filter everything above 10 Hz, recommended by 1. Ruhe A, Fejer R, Walker B. The test-retest reliability of centre of pressure measures in bipedal static task conditions - A systematic review of the literature. Gait Posture 32: 436–445, 2010.
             cutoffFrequency = 10;
             [b,a]=butter(4,cutoffFrequency/(sampRate/2)); %butterworth filter, 4th order
             COPml = filtfilt(b,a,COPml);
             COPap = filtfilt(b,a,COPap);
             
             % find distances to have mean COP at zero
-            SHIFTml = COPml - detrend(COPml);
-            SHIFTap = COPap - detrend(COPap);
+            %SHIFTml = COPml - detrend(COPml);
+            %SHIFTap = COPap - detrend(COPap);
+            SHIFTml = COPml - detrend(COPml,'constant');
+            SHIFTap = COPap - detrend(COPap,'constant');
             
             % detrend COP data
-            COPml = detrend(COPml);
-            COPap = detrend(COPap);
+            %COPml = detrend(COPml);
+            %COPap = detrend(COPap);
+            COPml = detrend(COPml,'constant');
+            COPap = detrend(COPap,'constant');
             
             % filter components of COP
             COPx1 = filtfilt(b,a,COPx1); COPx2 = filtfilt(b,a,COPx2);
@@ -670,6 +681,26 @@ classdef posturography
             %     axis square
             %     % axis([-0.08 0.015 -0.15 -0.08])
             % end
+            
+            % I'm getting issues with the above code for plotting. try this:
+            % d = [COPml, COPap];       %zero mean COP values
+            % [m,n]=size(d)         %returns m=rows, n=columns of d
+            % mean_d=mean(d)        %returns row vector with column means of d
+            % cov_mtx=cov(d)        %covariance matrix for d
+            % [V,D]=eig(cov_mtx)    %V=eigenvectors, D=eigenvalues of cov_mtx
+            % semimaj=[mean_d; mean_d+2.45*sqrt(D(1,1))*V(:,1)']
+            % %center and end of semimajor axis
+            % semimin=[mean_d; mean_d+2.45*sqrt(D(2,2))*V(:,2)']
+            % %center and end of semiminor axis
+            % theta=linspace(0,2*pi,41)';
+            % ellipse=2.45*sqrt(D(1,1))*cos(theta)*V(:,1)' + 2.45*sqrt(D(2,2))*sin(theta)*V(:,2)' + ones(size(theta))*mean_d
+            % plot(d(:,1),d(:,2),'k.');  %scatter plot with x=column 1 of d, y=column 2
+            % hold on;
+            % plot(semimaj(:,1),semimaj(:,2),'r','LineWidth',2);
+            % plot(semimin(:,1),semimin(:,2) ,'r','LineWidth',2);
+            % plot(ellipse(:,1),ellipse(:,2) ,'g','LineWidth',2);
+            %
+            %
             
             %% Area95_perSec     Area of the 95% confidence ellipse  per second
             % see above for detail in calcuations
