@@ -1,5 +1,5 @@
 % Filename: posturography.m
-% Author:   Samuel Acuña
+% Author:   Samuel AcuÃ±a
 % Updated:  27 Nov 2018
 % Description:
 % functions used to compare posturography. This code should serve as a
@@ -56,7 +56,7 @@ classdef posturography
                 mass = mean(Fz)/9.81; % newtons to kg
                 
                 %% filter data
-                % filter everything above 10 Hz, recommended by 1. Ruhe A, Fejer R, Walker B. The test-retest reliability of centre of pressure measures in bipedal static task conditions - A systematic review of the literature. Gait Posture 32: 436–445, 2010.
+                % filter everything above 10 Hz, recommended by 1. Ruhe A, Fejer R, Walker B. The test-retest reliability of centre of pressure measures in bipedal static task conditions - A systematic review of the literature. Gait Posture 32: 436â€“445, 2010.
                 cutoffFrequency = 10;
                 [b,a]=butter(4,cutoffFrequency/(sampRate/2)); %butterworth filter, 4th order
                 COPx = filtfilt(b,a,COPx);
@@ -116,7 +116,7 @@ classdef posturography
             
             sampRate = data.fs; % sample rate
             
-            % filter everything above 10 Hz, recommended by 1. Ruhe A, Fejer R, Walker B. The test-retest reliability of centre of pressure measures in bipedal static task conditions - A systematic review of the literature. Gait Posture 32: 436–445, 2010.
+            % filter everything above 10 Hz, recommended by 1. Ruhe A, Fejer R, Walker B. The test-retest reliability of centre of pressure measures in bipedal static task conditions - A systematic review of the literature. Gait Posture 32: 436â€“445, 2010.
             cutoffFrequency = 10;
             [b,a]=butter(4,cutoffFrequency/(sampRate/2)); %butterworth filter, 4th order
             COPml = filtfilt(b,a,COPml);
@@ -353,7 +353,7 @@ classdef posturography
             
             % legend
             subplot(plot_size(1),plot_size(2),i);
-            legend({'COP_M_L','COP_A_P'}, 'Location','best','boxoff')
+            legend({'COP_M_L','COP_A_P'}, 'Location','best') %,'boxoff')
             
             linkaxes(ax,'xy'); % link axes so they zoom together
             
@@ -411,7 +411,7 @@ classdef posturography
             addpoints(h(1),COP.time(1),COPml(1));
             addpoints(h(2),COP.time(1),COPap(1));
             drawnow
-            legend(h,{'COP_M_L','COP_A_P'}, 'Location','northeast','boxoff')
+            legend(h,{'COP_M_L','COP_A_P'}, 'Location','northeast') %,'boxoff')
             for k = 1:timeStep:length(COPml)-timeStep
                 addpoints(h(1),COP.time(k:(k+timeStep-1)),COPml(k:(k+timeStep-1)));
                 addpoints(h(2),COP.time(k:(k+timeStep-1)),COPap(k:(k+timeStep-1)));
@@ -435,7 +435,7 @@ classdef posturography
             % estimate Center of Gravity (COG), using filtering method and
             % considering the body as an inverted pendulum. Simple and
             % fast, but not super accurate.
-            % using method from:?Duarte, M., & Freitas, S. M. S. F. (2010). Revision of posturography based on force plate for balance evaluation. Revista Brasileira de Fisioterapia (São Carlos (São Paulo, Brazil)), 14(3), 183?192. http://doi.org/10.1590/S1413-35552010000300003
+            % using method from:?Duarte, M., & Freitas, S. M. S. F. (2010). Revision of posturography based on force plate for balance evaluation. Revista Brasileira de Fisioterapia (SÃ£o Carlos (SÃ£o Paulo, Brazil)), 14(3), 183?192. http://doi.org/10.1590/S1413-35552010000300003
             
             % default values
             if nargin == 1
@@ -494,7 +494,7 @@ classdef posturography
             
             % legend
             subplot(plot_size(1),plot_size(2),i);
-            legend({'COP_A_P','COG_A_P'}, 'Location','best','boxoff')
+            legend({'COP_A_P','COG_A_P'}, 'Location','best') %,'boxoff')
             
             linkaxes(ax,'xy'); % link axes so they zoom together
             
@@ -574,12 +574,12 @@ classdef posturography
             % 3. Schubert, P., Kirchner, M., Schmidtbleicher, D., & Haas, C. T.
             % (2012). About the structure of posturography: Sampling duration,
             % parametrization, focus of attention (part I). Journal of Biomedical
-            % Science and Engineering, 05(09), 496–507.
+            % Science and Engineering, 05(09), 496â€“507.
             % http://doi.org/10.4236/jbise.2012.59062
             % 4. Hufschmidt, A., Dichgans, J., Mauritz, K.-H., & Hufschmidt, M.
             % (1980). Some methods and parameters of body sway quantification and
-            % their neurological applications. Archiv Für Psychiatrie Und
-            % Nervenkrankheiten, 228(2), 135–150. http://doi.org/10.1007/BF00365601
+            % their neurological applications. Archiv FÃ¼r Psychiatrie Und
+            % Nervenkrankheiten, 228(2), 135â€“150. http://doi.org/10.1007/BF00365601
             % 5. Whitney 2011. Gait & Posture. "A comparison of accelerometry and
             % center of pressure measures during computerized dynamic
             % posturography: A measure of balance"
@@ -656,13 +656,13 @@ classdef posturography
             %                           %center and end of semimajor axis
             % semimin=[mean_d; mean_d+sqrt(c*D(2,2))*V(:,2)'];
             %                          %center and end of semiminor axis
-            % L_maj = sqrt(c*D(1,1)); % OR pdist(semimaj,'euclidean');
-            % L_min = sqrt(c*D(2,2)); % OR pdist(semimin,'euclidean');
-            % Area = pi*L_maj*L_min
+            % semimaj_length = sqrt(c*D(1,1)); % OR pdist(semimaj,'euclidean');
+            % semimin_length = sqrt(c*D(2,2)); % OR pdist(semimin,'euclidean');
+            % Area = pi*semimaj_length*semimin_length;
             
             % points on the ellipse, just for plotting sake
             % theta=linspace(0,2*pi,41)';
-            % ellipse=sqrt(c*D(1,1))*cos(theta)*V(:,1)' + sqrt(c*D(2,2))*sin(theta)*V(:,2)' + ones(size(theta))*d
+            % ellipse=sqrt(c*D(1,1))*cos(theta)*V(:,1)' + sqrt(c*D(2,2))*sin(theta)*V(:,2)' + ones(size(theta))*mean_d
             
             % % plot ellipse:
             % if (0) % set true to plot
@@ -682,25 +682,6 @@ classdef posturography
             %     % axis([-0.08 0.015 -0.15 -0.08])
             % end
             
-            % I'm getting issues with the above code for plotting. try this:
-            % d = [COPml, COPap];       %zero mean COP values
-            % [m,n]=size(d)         %returns m=rows, n=columns of d
-            % mean_d=mean(d)        %returns row vector with column means of d
-            % cov_mtx=cov(d)        %covariance matrix for d
-            % [V,D]=eig(cov_mtx)    %V=eigenvectors, D=eigenvalues of cov_mtx
-            % semimaj=[mean_d; mean_d+2.45*sqrt(D(1,1))*V(:,1)']
-            % %center and end of semimajor axis
-            % semimin=[mean_d; mean_d+2.45*sqrt(D(2,2))*V(:,2)']
-            % %center and end of semiminor axis
-            % theta=linspace(0,2*pi,41)';
-            % ellipse=2.45*sqrt(D(1,1))*cos(theta)*V(:,1)' + 2.45*sqrt(D(2,2))*sin(theta)*V(:,2)' + ones(size(theta))*mean_d
-            % plot(d(:,1),d(:,2),'k.');  %scatter plot with x=column 1 of d, y=column 2
-            % hold on;
-            % plot(semimaj(:,1),semimaj(:,2),'r','LineWidth',2);
-            % plot(semimin(:,1),semimin(:,2) ,'r','LineWidth',2);
-            % plot(ellipse(:,1),ellipse(:,2) ,'g','LineWidth',2);
-            %
-            %
             
             %% Area95_perSec     Area of the 95% confidence ellipse  per second
             % see above for detail in calcuations
